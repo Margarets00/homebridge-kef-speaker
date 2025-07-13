@@ -242,25 +242,54 @@ export class KefConnector {
    * Get complete speaker status for periodic checking
    */
   async getCompleteStatus(): Promise<SpeakerStatus> {
-    try {
-      const [power, source, volume, muted, isPlaying, songInfo] = await Promise.all([
-        this.getStatus(),
-        this.getSource(),
-        this.getVolume(),
-        this.apiRequest('getData', { path: 'settings:/kef/play/mute', roles: 'value' })
-          .then(response => response[0]?.bool_ || false),
-        this.isPlaying(),
-        this.getSongInformation(),
-      ]);
+    const status: SpeakerStatus = {
+      power: 'standby',
+      source: 'wifi',
+      volume: 0,
+      muted: false,
+      isPlaying: false,
+      songInfo: undefined,
+    };
 
-      return {
-        power,
-        source,
-        volume,
-        muted,
-        isPlaying,
-        songInfo,
-      };
+    try {
+      // Get power status
+      try {
+        status.power = await this.getStatus();
+      } catch (error) {
+        this.log.debug('Failed to get power status:', error);
+      }
+
+      // Get source
+      try {
+        status.source = await this.getSource();
+      } catch (error) {
+        this.log.debug('Failed to get source:', error);
+      }
+
+      // Get volume
+      try {
+        status.volume = await this.getVolume();
+        // Determine mute status based on volume (more reliable than API call)
+        status.muted = status.volume === 0;
+      } catch (error) {
+        this.log.debug('Failed to get volume:', error);
+      }
+
+      // Get playing status
+      try {
+        status.isPlaying = await this.isPlaying();
+      } catch (error) {
+        this.log.debug('Failed to get playing status:', error);
+      }
+
+      // Get song information
+      try {
+        status.songInfo = await this.getSongInformation();
+      } catch (error) {
+        this.log.debug('Failed to get song information:', error);
+      }
+
+      return status;
     } catch (error) {
       this.log.error('Error getting complete status:', error);
       throw error;
@@ -275,26 +304,40 @@ export class KefConnector {
       const currentStatus = await this.getCompleteStatus();
       const changes: SpeakerChange = {};
 
-      // Check for changes
+      // Only check for changes if we have valid data
       if (currentStatus.power !== lastStatus.power) {
         changes.power = currentStatus.power;
+        this.log.debug(`Power changed: ${lastStatus.power} -> ${currentStatus.power}`);
       }
+      
       if (currentStatus.source !== lastStatus.source) {
         changes.source = currentStatus.source;
+        this.log.debug(`Source changed: ${lastStatus.source} -> ${currentStatus.source}`);
       }
+      
       if (currentStatus.volume !== lastStatus.volume) {
         changes.volume = currentStatus.volume;
+        this.log.debug(`Volume changed: ${lastStatus.volume} -> ${currentStatus.volume}`);
       }
+      
       if (currentStatus.muted !== lastStatus.muted) {
         changes.muted = currentStatus.muted;
+        this.log.debug(`Mute changed: ${lastStatus.muted} -> ${currentStatus.muted}`);
       }
+      
       if (currentStatus.isPlaying !== lastStatus.isPlaying) {
         changes.isPlaying = currentStatus.isPlaying;
+        this.log.debug(`Playing changed: ${lastStatus.isPlaying} -> ${currentStatus.isPlaying}`);
+      }
+
+      // Log summary if changes detected
+      if (Object.keys(changes).length > 0) {
+        this.log.debug(`Detected ${Object.keys(changes).length} changes:`, Object.keys(changes));
       }
 
       return changes;
     } catch (error) {
-      this.log.error('Error checking for changes:', error);
+      this.log.warn('Error checking for changes (will retry on next interval):', error);
       return {};
     }
   }
