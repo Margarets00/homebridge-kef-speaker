@@ -39,6 +39,13 @@ export class KefSpeakerAccessory {
     this.speakerConfig = accessory.context.speaker;
     this.connector = new KefConnector(this.speakerConfig.ip, this.platform.log);
 
+    // Set up accessory information
+    this.accessory.getService(this.platform.Service.AccessoryInformation)!
+      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'KEF')
+      .setCharacteristic(this.platform.Characteristic.Model, this.speakerConfig.model)
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, this.speakerConfig.ip)
+      .setCharacteristic(this.platform.Characteristic.FirmwareRevision, '1.0.0');
+
     // Set up Television service
     this.service = this.accessory.getService(this.platform.Service.Television) ||
       this.accessory.addService(this.platform.Service.Television);
@@ -55,6 +62,17 @@ export class KefSpeakerAccessory {
       this.platform.Characteristic.Active.ACTIVE);
     this.speakerService.setCharacteristic(this.platform.Characteristic.VolumeControlType, 
       this.platform.Characteristic.VolumeControlType.ABSOLUTE);
+
+    // Set volume range (0-100)
+    this.speakerService.getCharacteristic(this.platform.Characteristic.Volume)
+      .setProps({
+        minValue: 0,
+        maxValue: 100,
+        minStep: 1,
+      });
+
+    // IMPORTANT: Link Television service with TelevisionSpeaker service
+    this.service.addLinkedService(this.speakerService);
 
     // Set up input sources
     this.setupInputSources();
