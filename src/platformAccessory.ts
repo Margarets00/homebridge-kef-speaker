@@ -67,7 +67,7 @@ export class KefSpeakerAccessory {
 
     // Start polling if enabled
     if (this.speakerConfig.polling?.enabled) {
-      this.startPolling();
+      this.startPeriodicCheck();
     }
   }
 
@@ -212,83 +212,78 @@ export class KefSpeakerAccessory {
   }
 
   /**
-   * Start polling for speaker changes
+   * Start periodic status checking
    */
-  private async startPolling() {
+  private async startPeriodicCheck() {
     if (this.pollingActive) {
       return;
     }
 
-    try {
-      await this.connector.startPolling(this.speakerConfig.polling?.includeSongStatus || false);
-      this.pollingActive = true;
-      
-      this.pollingInterval = setInterval(async () => {
-        try {
-          const changes = await this.connector.pollSpeaker(this.speakerConfig.polling?.interval || 5000);
+    this.pollingActive = true;
+    
+    const checkInterval = this.speakerConfig.polling?.interval || 30000; // Default 30 seconds
+    
+    this.pollingInterval = setInterval(async () => {
+      try {
+        const changes = await this.connector.checkForChanges(this.currentStatus);
+        
+        if (Object.keys(changes).length > 0) {
+          this.platform.log.debug(`Status changes detected for ${this.speakerConfig.name}:`, changes);
           this.handleSpeakerChanges(changes);
-        } catch (error) {
-          this.platform.log.debug(`Polling temporarily disabled for ${this.speakerConfig.name}:`, error);
+          
+          // Update current status with changes
+          Object.assign(this.currentStatus, changes);
+          
+          // Update HomeKit state
+          this.updateHomeKitState();
         }
-      }, this.speakerConfig.polling?.interval || 5000);
-      
-      this.platform.log.info(`Started polling for ${this.speakerConfig.name}`);
-    } catch (error) {
-      this.platform.log.error(`Failed to start polling for ${this.speakerConfig.name}:`, error);
-    }
+      } catch (error) {
+        this.platform.log.debug(`Periodic check failed for ${this.speakerConfig.name}:`, error);
+      }
+    }, checkInterval);
+    
+    this.platform.log.info(`Started periodic status checking for ${this.speakerConfig.name} (every ${checkInterval/1000}s)`);
   }
 
   /**
-   * Stop polling
+   * Stop periodic checking
    */
-  private stopPolling() {
+  private stopPeriodicCheck() {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = undefined;
     }
     this.pollingActive = false;
+    this.platform.log.info(`Stopped periodic status checking for ${this.speakerConfig.name}`);
   }
 
   /**
-   * Handle speaker changes from polling
+   * Handle speaker changes from periodic checking
    */
   private handleSpeakerChanges(changes: SpeakerChange) {
-    let updated = false;
-
-    // Update current status
+    // Log the changes for debugging
     if (changes.power !== undefined) {
-      this.currentStatus.power = changes.power;
-      updated = true;
+      this.platform.log.debug(`${this.speakerConfig.name} power changed to: ${changes.power}`);
     }
     
     if (changes.source !== undefined) {
-      this.currentStatus.source = changes.source;
-      updated = true;
+      this.platform.log.debug(`${this.speakerConfig.name} source changed to: ${changes.source}`);
     }
     
     if (changes.volume !== undefined) {
-      this.currentStatus.volume = changes.volume;
-      updated = true;
+      this.platform.log.debug(`${this.speakerConfig.name} volume changed to: ${changes.volume}`);
     }
     
     if (changes.muted !== undefined) {
-      this.currentStatus.muted = changes.muted;
-      updated = true;
+      this.platform.log.debug(`${this.speakerConfig.name} mute changed to: ${changes.muted}`);
     }
     
     if (changes.isPlaying !== undefined) {
-      this.currentStatus.isPlaying = changes.isPlaying;
-      updated = true;
+      this.platform.log.debug(`${this.speakerConfig.name} playing state changed to: ${changes.isPlaying}`);
     }
     
     if (changes.songInfo !== undefined) {
-      this.currentStatus.songInfo = changes.songInfo;
-      updated = true;
-    }
-
-    // Update HomeKit if there were changes
-    if (updated) {
-      this.updateHomeKitState();
+      this.platform.log.debug(`${this.speakerConfig.name} song info changed:`, changes.songInfo);
     }
   }
 
@@ -517,6 +512,6 @@ export class KefSpeakerAccessory {
    * Cleanup
    */
   destroy() {
-    this.stopPolling();
+    this.stopPeriodicCheck();
   }
 }

@@ -41,8 +41,6 @@ export interface SpeakerChange {
  */
 export class KefConnector {
   private readonly baseUrl: string;
-  private pollingQueue?: string;
-  private lastPolled?: number;
 
   constructor(
     private readonly host: string,
@@ -227,61 +225,9 @@ export class KefConnector {
     return releaseText.split('_')[1] || 'Unknown';
   }
 
-  /**
-   * Polling for real-time updates
-   */
-  async startPolling(includeSongStatus = false): Promise<string> {
-    // Polling temporarily disabled due to API compatibility issues
-    // TODO: Implement proper polling based on original pykefcontrol
-    this.log.warn('Polling is temporarily disabled due to API compatibility issues');
-    this.pollingQueue = 'disabled';
-    this.lastPolled = Date.now();
-    
-    return this.pollingQueue;
-  }
 
-  async pollSpeaker(timeout = 10000): Promise<SpeakerChange> {
-    if (!this.pollingQueue || this.pollingQueue === 'disabled') {
-      this.log.warn('Polling is disabled. Returning empty changes.');
-      return {};
-    }
 
-    // Polling temporarily disabled due to API compatibility issues
-    // TODO: Implement proper polling based on original pykefcontrol
-    this.log.warn('pollSpeaker is temporarily disabled due to API compatibility issues');
-    return {};
-  }
 
-  private parseEvents(events: any): SpeakerChange {
-    const changes: SpeakerChange = {};
-
-    for (const [eventPath, eventData] of Object.entries(events)) {
-      switch (eventPath) {
-        case 'settings:/kef/play/physicalSource':
-          changes.source = (eventData as any).kefPhysicalSource;
-          break;
-        case 'player:player/data/playTime':
-          changes.songProgress = (eventData as any).i64_;
-          break;
-        case 'player:volume':
-          changes.volume = (eventData as any).i32_;
-          break;
-        case 'player:player/data':
-          changes.songInfo = this.extractSongInfo(eventData);
-          changes.songLength = (eventData as any).status?.duration;
-          changes.isPlaying = (eventData as any).state === 'playing';
-          break;
-        case 'settings:/kef/host/speakerStatus':
-          changes.power = (eventData as any).kefSpeakerStatus;
-          break;
-        case 'settings:/mediaPlayer/mute':
-          changes.muted = (eventData as any).bool_;
-          break;
-      }
-    }
-
-    return changes;
-  }
 
   private extractSongInfo(playerData: any): { title?: string; artist?: string; album?: string; coverUrl?: string } {
     return {
@@ -293,29 +239,64 @@ export class KefConnector {
   }
 
   /**
-   * Get complete speaker status
+   * Get complete speaker status for periodic checking
    */
   async getCompleteStatus(): Promise<SpeakerStatus> {
-    const [power, source, volume, playing, songInfo, songLength, songProgress] = await Promise.all([
-      this.getStatus(),
-      this.getSource(),
-      this.getVolume(),
-      this.isPlaying(),
-      this.getSongInformation(),
-      this.getSongLength(),
-      this.getSongProgress(),
-    ]);
+    try {
+      const [power, source, volume, muted, isPlaying, songInfo] = await Promise.all([
+        this.getStatus(),
+        this.getSource(),
+        this.getVolume(),
+        this.apiRequest('getData', { path: 'settings:/kef/play/mute', roles: 'value' })
+          .then(response => response[0]?.bool_ || false),
+        this.isPlaying(),
+        this.getSongInformation(),
+      ]);
 
-    return {
-      power,
-      source,
-      volume,
-      muted: volume === 0,
-      isPlaying: playing,
-      songInfo,
-      songLength,
-      songProgress,
-    };
+      return {
+        power,
+        source,
+        volume,
+        muted,
+        isPlaying,
+        songInfo,
+      };
+    } catch (error) {
+      this.log.error('Error getting complete status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if speaker status has changed since last check
+   */
+  async checkForChanges(lastStatus: SpeakerStatus): Promise<SpeakerChange> {
+    try {
+      const currentStatus = await this.getCompleteStatus();
+      const changes: SpeakerChange = {};
+
+      // Check for changes
+      if (currentStatus.power !== lastStatus.power) {
+        changes.power = currentStatus.power;
+      }
+      if (currentStatus.source !== lastStatus.source) {
+        changes.source = currentStatus.source;
+      }
+      if (currentStatus.volume !== lastStatus.volume) {
+        changes.volume = currentStatus.volume;
+      }
+      if (currentStatus.muted !== lastStatus.muted) {
+        changes.muted = currentStatus.muted;
+      }
+      if (currentStatus.isPlaying !== lastStatus.isPlaying) {
+        changes.isPlaying = currentStatus.isPlaying;
+      }
+
+      return changes;
+    } catch (error) {
+      this.log.error('Error checking for changes:', error);
+      return {};
+    }
   }
 
   /**

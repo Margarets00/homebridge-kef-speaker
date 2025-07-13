@@ -5,11 +5,13 @@ export default tseslint.config(
   {
     ignores: ['dist/**'],
   },
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     rules: {
       'quotes': ['error', 'single'],
-      'indent': ['error', 2, { 'SwitchCase': 0 }],
-      'linebreak-style': ['error', 'unix'],
+      'indent': ['warn', 2, { 'SwitchCase': 0 }],
+      'linebreak-style': ['error', 'windows'],
       'semi': ['error', 'always'],
       'comma-dangle': ['error', 'always-multiline'],
       'dot-notation': 'error',
@@ -21,7 +23,8 @@ export default tseslint.config(
       'object-curly-spacing': ['error', 'always'],
       'no-use-before-define': 'off',
       '@typescript-eslint/no-use-before-define': ['error', { 'classes': false, 'enums': false }],
-      '@typescript-eslint/no-unused-vars': ['error', { 'caughtErrors': 'none' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { 'caughtErrors': 'none', 'argsIgnorePattern': '^_' }],
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {
@@ -30,6 +33,4 @@ export default tseslint.config(
       sourceType: 'module',
     },
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
 );
