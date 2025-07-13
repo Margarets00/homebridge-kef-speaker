@@ -231,42 +231,25 @@ export class KefConnector {
    * Polling for real-time updates
    */
   async startPolling(includeSongStatus = false): Promise<string> {
-    const subscriptions = [
-      { path: 'settings:/mediaPlayer/playMode', type: 'itemWithValue' },
-      { path: 'player:volume', type: 'itemWithValue' },
-      { path: 'settings:/mediaPlayer/mute', type: 'itemWithValue' },
-      { path: 'settings:/kef/host/speakerStatus', type: 'itemWithValue' },
-      { path: 'settings:/kef/play/physicalSource', type: 'itemWithValue' },
-      { path: 'player:player/data', type: 'itemWithValue' },
-      { path: 'settings:/deviceName', type: 'itemWithValue' },
-    ];
-
-    if (includeSongStatus) {
-      subscriptions.push({ path: 'player:player/data/playTime', type: 'itemWithValue' });
-    }
-
-    const response = await this.apiRequest('event/modifyQueue', {
-      subscribe: subscriptions,
-      unsubscribe: [],
-    }, 'POST');
-
-    this.pollingQueue = String(response).slice(1, -1);
+    // Polling temporarily disabled due to API compatibility issues
+    // TODO: Implement proper polling based on original pykefcontrol
+    this.log.warn('Polling is temporarily disabled due to API compatibility issues');
+    this.pollingQueue = 'disabled';
     this.lastPolled = Date.now();
     
     return this.pollingQueue;
   }
 
   async pollSpeaker(timeout = 10000): Promise<SpeakerChange> {
-    if (!this.pollingQueue) {
-      throw new Error('Polling not started. Call startPolling() first.');
+    if (!this.pollingQueue || this.pollingQueue === 'disabled') {
+      this.log.warn('Polling is disabled. Returning empty changes.');
+      return {};
     }
 
-    const response = await this.apiRequest('event/longPoll', {
-      id: this.pollingQueue,
-      timeout: timeout / 1000,
-    }, 'POST');
-
-    return this.parseEvents(response.events || {});
+    // Polling temporarily disabled due to API compatibility issues
+    // TODO: Implement proper polling based on original pykefcontrol
+    this.log.warn('pollSpeaker is temporarily disabled due to API compatibility issues');
+    return {};
   }
 
   private parseEvents(events: any): SpeakerChange {

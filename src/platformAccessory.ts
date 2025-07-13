@@ -228,7 +228,7 @@ export class KefSpeakerAccessory {
           const changes = await this.connector.pollSpeaker(this.speakerConfig.polling?.interval || 5000);
           this.handleSpeakerChanges(changes);
         } catch (error) {
-          this.platform.log.error(`Polling error for ${this.speakerConfig.name}:`, error);
+          this.platform.log.debug(`Polling temporarily disabled for ${this.speakerConfig.name}:`, error);
         }
       }, this.speakerConfig.polling?.interval || 5000);
       
