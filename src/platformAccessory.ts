@@ -198,34 +198,82 @@ export class KefSpeakerAccessory {
   }
 
   /**
-   * Update HomeKit characteristics based on current status
+   * Update HomeKit state with current speaker status
    */
   private updateHomeKitState() {
     // Update power state
-    this.service.updateCharacteristic(this.platform.Characteristic.Active, 
+    this.service.updateCharacteristic(
+      this.platform.Characteristic.Active,
       this.currentStatus.power === 'powerOn' ? 
         this.platform.Characteristic.Active.ACTIVE : 
-        this.platform.Characteristic.Active.INACTIVE);
+        this.platform.Characteristic.Active.INACTIVE,
+    );
 
     // Update source
     const supportedSources = SPEAKER_MODELS[this.speakerConfig.model].sources;
     const sourceIndex = supportedSources.indexOf(this.currentStatus.source as any);
+    
     if (sourceIndex >= 0) {
-      this.service.updateCharacteristic(this.platform.Characteristic.ActiveIdentifier, sourceIndex);
+      this.service.updateCharacteristic(
+        this.platform.Characteristic.ActiveIdentifier,
+        sourceIndex,
+      );
     }
 
     // Update volume
-    this.speakerService.updateCharacteristic(this.platform.Characteristic.Volume, this.currentStatus.volume);
-    
-    // Update mute state
-    this.speakerService.updateCharacteristic(this.platform.Characteristic.Mute, this.currentStatus.muted);
+    this.speakerService.updateCharacteristic(
+      this.platform.Characteristic.Volume,
+      this.currentStatus.volume,
+    );
 
-    // Update display name with current song if enabled
-    if (this.speakerConfig.polling?.updateDisplayName && this.currentStatus.songInfo?.title) {
-      const songName = this.currentStatus.songInfo.artist ? 
-        `${this.currentStatus.songInfo.title} - ${this.currentStatus.songInfo.artist}` : 
-        this.currentStatus.songInfo.title;
-      this.service.updateCharacteristic(this.platform.Characteristic.ConfiguredName, songName);
+    // Update mute state
+    this.speakerService.updateCharacteristic(
+      this.platform.Characteristic.Mute,
+      this.currentStatus.muted,
+    );
+
+    // Update device name with current song info (if enabled)
+    if (this.speakerConfig.showCurrentSong !== false) { // Default to true
+      this.updateDeviceNameWithSongInfo();
+    }
+  }
+
+  /**
+   * Update device name to show current playing song
+   */
+  private updateDeviceNameWithSongInfo() {
+    const baseName = this.speakerConfig.name;
+    
+    if (this.currentStatus.isPlaying && this.currentStatus.songInfo) {
+      const { title, artist } = this.currentStatus.songInfo;
+      
+      let displayName = baseName;
+      
+      if (title && artist) {
+        displayName = `${baseName} • ${artist} - ${title}`;
+      } else if (title) {
+        displayName = `${baseName} • ${title}`;
+      } else if (artist) {
+        displayName = `${baseName} • ${artist}`;
+      }
+      
+      // Limit length to prevent UI issues
+      if (displayName.length > 60) {
+        displayName = displayName.substring(0, 57) + '...';
+      }
+      
+      this.service.updateCharacteristic(
+        this.platform.Characteristic.ConfiguredName,
+        displayName,
+      );
+      
+      this.platform.log.debug(`Updated device name: ${displayName}`);
+    } else {
+      // Reset to original name when not playing
+      this.service.updateCharacteristic(
+        this.platform.Characteristic.ConfiguredName,
+        baseName,
+      );
     }
   }
 

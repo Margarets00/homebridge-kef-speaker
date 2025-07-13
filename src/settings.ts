@@ -47,6 +47,7 @@ export interface SpeakerConfig {
   ip: string;
   model: keyof typeof SPEAKER_MODELS;
   restorePowerState?: boolean;
+  showCurrentSong?: boolean; // Display current song in device name (default: true)
   volumeLimit?: {
     min: number;
     max: number;
