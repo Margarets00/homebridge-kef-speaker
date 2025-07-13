@@ -477,25 +477,46 @@ export class KefSpeakerAccessory {
    * Set volume
    */
   async setVolume(value: CharacteristicValue) {
+    this.platform.log.info(`📢 [${this.speakerConfig.name}] Siri/HomeKit volume command received: ${value}`);
+    
     try {
       let volume = value as number;
       
       // Apply volume limits
       if (this.speakerConfig.volumeLimit) {
+        const originalVolume = volume;
         volume = Math.max(this.speakerConfig.volumeLimit.min, 
           Math.min(this.speakerConfig.volumeLimit.max, volume));
+        
+        if (originalVolume !== volume) {
+          this.platform.log.info(`📢 [${this.speakerConfig.name}] Volume limited: ${originalVolume} → ${volume}`);
+        }
       }
       
       // Apply night mode limits
       if (this.nightModeActive && this.speakerConfig.nightMode) {
+        const originalVolume = volume;
         volume = Math.min(this.speakerConfig.nightMode.maxVolume, volume);
+        
+        if (originalVolume !== volume) {
+          this.platform.log.info(`📢 [${this.speakerConfig.name}] Night mode limited: ${originalVolume} → ${volume}`);
+        }
       }
+      
+      this.platform.log.info(`📢 [${this.speakerConfig.name}] Setting volume to: ${volume}`);
       
       await this.connector.setVolume(volume);
       this.currentStatus.volume = volume;
-      this.platform.log.info(`Set volume to ${volume} for ${this.speakerConfig.name}`);
+      
+      // Store previous volume for unmute
+      if (volume > 0) {
+        this.previousVolume = volume;
+      }
+      
+      this.platform.log.info(`📢 [${this.speakerConfig.name}] Volume successfully set to: ${volume}`);
+      
     } catch (error) {
-      this.platform.log.error(`Failed to set volume for ${this.speakerConfig.name}:`, error);
+      this.platform.log.error(`📢 [${this.speakerConfig.name}] Failed to set volume:`, error);
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
   }
