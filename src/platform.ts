@@ -1,150 +1,196 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
+import * as cron from 'node-cron';
 
-import { ExamplePlatformAccessory } from './platformAccessory.js';
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
-
-// This is only required when using Custom Services and Characteristics not support by HomeKit
-import { EveHomeKitTypes } from 'homebridge-lib/EveHomeKitTypes';
+import { KefSpeakerAccessory } from './platformAccessory.js';
+import { PLATFORM_NAME, PLUGIN_NAME, SPEAKER_MODELS, type SpeakerConfig, type PlatformConfig as KefPlatformConfig } from './settings.js';
+import { KefConnector } from './kefConnector.js';
 
 /**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
+ * KEF LSX II Platform
+ * This class is the main constructor for the KEF speaker plugin
  */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
+export class KefLsxIIPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
 
-  // this is used to track restored cached accessories
+  // Track restored cached accessories
   public readonly accessories: Map<string, PlatformAccessory> = new Map();
   public readonly discoveredCacheUUIDs: string[] = [];
 
-  // This is only required when using Custom Services and Characteristics not support by HomeKit
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomServices: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public readonly CustomCharacteristics: any;
+  // Track speaker accessories
+  private readonly speakerAccessories: Map<string, KefSpeakerAccessory> = new Map();
 
   constructor(
     public readonly log: Logging,
-    public readonly config: PlatformConfig,
+    public readonly config: PlatformConfig & KefPlatformConfig,
     public readonly api: API,
   ) {
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
 
-    // This is only required when using Custom Services and Characteristics not support by HomeKit
-    this.CustomServices = new EveHomeKitTypes(this.api).Services;
-    this.CustomCharacteristics = new EveHomeKitTypes(this.api).Characteristics;
-
     this.log.debug('Finished initializing platform:', this.config.name);
 
-    // When this event is fired it means Homebridge has restored all cached accessories from disk.
-    // Dynamic Platform plugins should only register new accessories after this event was fired,
-    // in order to ensure they weren't added to homebridge already. This event can also be used
-    // to start discovery of new accessories.
+    // Validate configuration
+    if (!this.config.speakers || !Array.isArray(this.config.speakers)) {
+      this.log.error('No speakers configured. Please add speakers in the plugin settings.');
+      return;
+    }
+
+    // When this event is fired it means Homebridge has restored all cached accessories from disk
     this.api.on('didFinishLaunching', () => {
-      log.debug('Executed didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
+      this.log.debug('Executed didFinishLaunching callback');
       this.discoverDevices();
     });
   }
 
   /**
    * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to set up event handlers for characteristics and update respective values.
+   * It should be used to setup event handlers for characteristics and update respective values.
    */
   configureAccessory(accessory: PlatformAccessory) {
     this.log.info('Loading accessory from cache:', accessory.displayName);
-
-    // add the restored accessory to the accessories cache, so we can track if it has already been registered
+    
+    // Add the restored accessory to the accessories cache
     this.accessories.set(accessory.UUID, accessory);
+    this.discoveredCacheUUIDs.push(accessory.UUID);
   }
 
   /**
-   * This is an example method showing how to register discovered accessories.
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
+   * Discover and register speaker devices
    */
-  discoverDevices() {
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
-      {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
-      },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-      {
-        // This is an example of a device which uses a Custom Service
-        exampleUniqueId: 'IJKL',
-        exampleDisplayName: 'Backyard',
-        CustomService: 'AirPressureSensor',
-      },
-    ];
-
-    // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
-      // generate a unique id for the accessory this should be generated from
-      // something globally unique, but constant, for example, the device serial
-      // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
-
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.get(uuid);
-
-      if (existingAccessory) {
-        // the accessory already exists
-        this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-
-        // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-        // existingAccessory.context.device = device;
-        // this.api.updatePlatformAccessories([existingAccessory]);
-
-        // create the accessory handler for the restored accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, existingAccessory);
-
-        // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-        // remove platform accessories when no longer present
-        // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-        // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-      } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
-
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
-
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
-
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
-
-        // link the accessory to your platform
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      }
-
-      // push into discoveredCacheUUIDs
-      this.discoveredCacheUUIDs.push(uuid);
+  async discoverDevices() {
+    for (const speakerConfig of this.config.speakers) {
+      await this.setupSpeaker(speakerConfig);
     }
 
-    // you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
-    // for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
-    // from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
+    // Remove any accessories that are no longer configured
     for (const [uuid, accessory] of this.accessories) {
       if (!this.discoveredCacheUUIDs.includes(uuid)) {
         this.log.info('Removing existing accessory from cache:', accessory.displayName);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.accessories.delete(uuid);
       }
     }
+  }
+
+  /**
+   * Setup individual speaker
+   */
+  private async setupSpeaker(speakerConfig: SpeakerConfig) {
+    // Validate speaker configuration
+    if (!speakerConfig.name || !speakerConfig.ip || !speakerConfig.model) {
+      this.log.error('Invalid speaker configuration. Name, IP, and model are required.');
+      return;
+    }
+
+    // Validate speaker model
+    if (!SPEAKER_MODELS[speakerConfig.model]) {
+      this.log.error(`Unsupported speaker model: ${speakerConfig.model}`);
+      return;
+    }
+
+    // Generate UUID for this speaker
+    const uuid = this.api.hap.uuid.generate(speakerConfig.ip);
+
+    // Check if accessory already exists
+    let accessory = this.accessories.get(uuid);
+
+    if (accessory) {
+      // Update existing accessory
+      this.log.info('Restoring existing accessory from cache:', accessory.displayName);
+      
+      // Update context with new config
+      accessory.context.speaker = speakerConfig;
+      
+      // Update accessory information
+      accessory.getService(this.Service.AccessoryInformation)!
+        .setCharacteristic(this.Characteristic.Manufacturer, 'KEF')
+        .setCharacteristic(this.Characteristic.Model, SPEAKER_MODELS[speakerConfig.model].name)
+        .setCharacteristic(this.Characteristic.Name, speakerConfig.name);
+    } else {
+      // Create new accessory
+      this.log.info('Adding new accessory:', speakerConfig.name);
+      
+      accessory = new this.api.platformAccessory(speakerConfig.name, uuid);
+      
+      // Set accessory context
+      accessory.context.speaker = speakerConfig;
+      
+      // Set accessory information
+      accessory.getService(this.Service.AccessoryInformation)!
+        .setCharacteristic(this.Characteristic.Manufacturer, 'KEF')
+        .setCharacteristic(this.Characteristic.Model, SPEAKER_MODELS[speakerConfig.model].name)
+        .setCharacteristic(this.Characteristic.SerialNumber, speakerConfig.ip);
+
+      // Register the accessory
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.accessories.set(uuid, accessory);
+    }
+
+    // Create speaker accessory handler
+    const speakerAccessory = new KefSpeakerAccessory(this, accessory);
+    this.speakerAccessories.set(uuid, speakerAccessory);
+
+    // Test connection
+    try {
+      const connector = new KefConnector(speakerConfig.ip, this.log);
+      await connector.getStatus();
+      this.log.info(`Successfully connected to speaker: ${speakerConfig.name} (${speakerConfig.ip})`);
+    } catch (error) {
+      this.log.error(`Failed to connect to speaker: ${speakerConfig.name} (${speakerConfig.ip})`, error);
+    }
+
+    // Setup night mode cron job if enabled
+    if (speakerConfig.nightMode?.enabled) {
+      this.setupNightMode(speakerConfig, speakerAccessory);
+    }
+
+    // Mark as discovered
+    this.discoveredCacheUUIDs.push(uuid);
+  }
+
+  /**
+   * Setup night mode scheduling
+   */
+  private setupNightMode(speakerConfig: SpeakerConfig, speakerAccessory: KefSpeakerAccessory) {
+    const nightMode = speakerConfig.nightMode!;
+    
+    // Parse schedule times
+    const [startHour, startMinute] = nightMode.schedule.start.split(':').map(Number);
+    const [endHour, endMinute] = nightMode.schedule.end.split(':').map(Number);
+    
+    // Start night mode cron job
+    cron.schedule(`${startMinute} ${startHour} * * *`, () => {
+      this.log.info(`Activating night mode for ${speakerConfig.name}`);
+      speakerAccessory.activateNightMode();
+    }, {
+      scheduled: true,
+      timezone: 'America/New_York', // You might want to make this configurable
+    });
+
+    // End night mode cron job
+    cron.schedule(`${endMinute} ${endHour} * * *`, () => {
+      this.log.info(`Deactivating night mode for ${speakerConfig.name}`);
+      speakerAccessory.deactivateNightMode();
+    }, {
+      scheduled: true,
+      timezone: 'America/New_York', // You might want to make this configurable
+    });
+
+    this.log.info(`Night mode scheduled for ${speakerConfig.name}: ${nightMode.schedule.start} - ${nightMode.schedule.end}`);
+  }
+
+  /**
+   * Get speaker accessory by UUID
+   */
+  getSpeakerAccessory(uuid: string): KefSpeakerAccessory | undefined {
+    return this.speakerAccessories.get(uuid);
+  }
+
+  /**
+   * Get all speaker accessories
+   */
+  getAllSpeakerAccessories(): KefSpeakerAccessory[] {
+    return Array.from(this.speakerAccessories.values());
   }
 }

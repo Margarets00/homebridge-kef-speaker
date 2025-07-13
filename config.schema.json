@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "KefLsxII",
   "pluginType": "platform",
   "singular": true,
   "strictValidation": false,
@@ -10,7 +10,144 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "default": "KEF Speakers"
+      },
+      "speakers": {
+        "type": "array",
+        "title": "Speakers",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Speaker Name",
+              "type": "string",
+              "required": true,
+              "placeholder": "Living Room Speaker"
+            },
+            "ip": {
+              "title": "IP Address",
+              "type": "string",
+              "required": true,
+              "format": "ipv4",
+              "placeholder": "192.168.1.100"
+            },
+            "model": {
+              "title": "Speaker Model",
+              "type": "string",
+              "required": true,
+              "default": "LS50W2",
+              "oneOf": [
+                { "title": "KEF LS50 Wireless II", "enum": ["LS50W2"] },
+                { "title": "KEF LSX II", "enum": ["LSX2"] },
+                { "title": "KEF LS60", "enum": ["LS60"] }
+              ]
+            },
+            "restorePowerState": {
+              "title": "Restore Power State on Restart",
+              "type": "boolean",
+              "default": false
+            },
+            "volumeLimit": {
+              "type": "object",
+              "title": "Volume Limits",
+              "properties": {
+                "min": {
+                  "title": "Minimum Volume",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 0
+                },
+                "max": {
+                  "title": "Maximum Volume",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 100
+                }
+              }
+            },
+            "nightMode": {
+              "type": "object",
+              "title": "Night Mode",
+              "properties": {
+                "enabled": {
+                  "title": "Enable Night Mode",
+                  "type": "boolean",
+                  "default": false
+                },
+                "maxVolume": {
+                  "title": "Night Mode Max Volume",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 30,
+                  "condition": {
+                    "functionBody": "return model.nightMode && model.nightMode.enabled === true;"
+                  }
+                },
+                "schedule": {
+                  "type": "object",
+                  "title": "Schedule",
+                  "condition": {
+                    "functionBody": "return model.nightMode && model.nightMode.enabled === true;"
+                  },
+                  "properties": {
+                    "start": {
+                      "title": "Start Time",
+                      "type": "string",
+                      "format": "time",
+                      "default": "22:00"
+                    },
+                    "end": {
+                      "title": "End Time",
+                      "type": "string",
+                      "format": "time",
+                      "default": "07:00"
+                    }
+                  }
+                }
+              }
+            },
+            "polling": {
+              "type": "object",
+              "title": "Real-time Monitoring",
+              "properties": {
+                "enabled": {
+                  "title": "Enable Polling",
+                  "type": "boolean",
+                  "default": true
+                },
+                "interval": {
+                  "title": "Polling Interval (ms)",
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 60000,
+                  "default": 5000,
+                  "condition": {
+                    "functionBody": "return model.polling && model.polling.enabled === true;"
+                  }
+                },
+                "includeSongStatus": {
+                  "title": "Include Song Progress",
+                  "type": "boolean",
+                  "default": true,
+                  "condition": {
+                    "functionBody": "return model.polling && model.polling.enabled === true;"
+                  }
+                },
+                "updateDisplayName": {
+                  "title": "Update Display Name with Current Song",
+                  "type": "boolean",
+                  "default": false,
+                  "condition": {
+                    "functionBody": "return model.polling && model.polling.enabled === true;"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

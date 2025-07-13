@@ -1,22 +1,28 @@
 {
-  "name": "homebridge-plugin-name",
-  "displayName": "Plugin Name",
+  "name": "homebridge-kef-lsx-ii",
+  "displayName": "KEF LSX II",
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "A short description about what your plugin does.",
+  "description": "Homebridge plugin for KEF wireless speakers (LS50 Wireless II, LSX II, LS60)",
   "author": "Your Name",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/USERNAME/GITHUB_PROJECT_NAME#readme",
+  "homepage": "https://github.com/USERNAME/homebridge-kef-lsx-ii#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "https://github.com/USERNAME/homebridge-kef-lsx-ii.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/USERNAME/homebridge-kef-lsx-ii/issues"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "kef",
+    "speakers",
+    "lsx",
+    "ls50",
+    "ls60",
+    "wireless"
   ],
   "main": "dist/index.js",
   "engines": {
@@ -30,11 +36,13 @@
     "watch": "npm run build && npm link && nodemon"
   },
   "dependencies": {
-    "homebridge-lib": "^7.1.4"
+    "homebridge-lib": "^7.1.4",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@types/node": "^22.13.5",
+    "@types/node-cron": "^3.0.11",
     "eslint": "^9.21.0",
     "homebridge": "^2.0.0-beta.0",
     "nodemon": "^3.1.9",
