@@ -2,7 +2,7 @@
   "name": "homebridge-kef-speaker",
   "displayName": "KEF Speaker",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "description": "Homebridge plugin for KEF wireless speakers (LS50 Wireless II, LSX II, LS60)",
   "author": "Margarets00",
