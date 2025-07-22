@@ -135,6 +135,28 @@ MIT License - see LICENSE file for details.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Release Process
+
+This project uses automated releases with semantic versioning:
+
+### For Developers
+1. **Development**: Work in `develop` branch
+2. **Create PR**: From `develop` to `main`
+3. **Auto Release**: Add `[auto-release]` to PR title for automatic release
+4. **Manual Release**: Use GitHub Actions "Release and Publish" workflow
+
+### Version Bumping
+- **Patch** (1.0.0 → 1.0.1): Bug fixes, default behavior
+- **Minor** (1.0.0 → 1.1.0): New features, include `[minor]` in commit message
+- **Major** (1.0.0 → 2.0.0): Breaking changes, include `[major]` in commit message
+
+### Manual Release Commands
+```bash
+npm run release        # Patch version
+npm run release:minor  # Minor version  
+npm run release:major  # Major version
+```
+
 ## Changelog
 
 ### 1.0.0

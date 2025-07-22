@@ -1,0 +1,73 @@
+name: Merge to Main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+jobs:
+  prepare-release:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full test suite
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Check if auto-release should trigger
+        id: check_auto_release
+        run: |
+          if [[ "${{ github.event.pull_request.title }}" =~ \[auto-release\] ]]; then
+            echo "auto_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "auto_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Release Workflow
+        if: steps.check_auto_release.outputs.auto_release == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: 'main',
+              inputs: {
+                version_type: 'patch'
+              }
+            });
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const autoRelease = '${{ steps.check_auto_release.outputs.auto_release }}' === 'true';
+            const message = autoRelease 
+              ? '🚀 Merge completed! Auto-release has been triggered.'
+              : '✅ Merge completed! To create a release, manually trigger the "Release and Publish" workflow or push to main with commit message containing [major], [minor], or patch will be used by default.';
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            }); 
