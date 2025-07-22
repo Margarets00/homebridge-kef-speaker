@@ -1,19 +1,19 @@
 {
-  "name": "homebridge-kef-lsx-ii",
-  "displayName": "KEF LSX II",
+  "name": "homebridge-kef-speaker",
+  "displayName": "KEF Speaker",
   "type": "module",
   "version": "1.0.0",
   "private": true,
   "description": "Homebridge plugin for KEF wireless speakers (LS50 Wireless II, LSX II, LS60)",
-  "author": "Your Name",
+  "author": "Margarets00",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/USERNAME/homebridge-kef-lsx-ii#readme",
+  "homepage": "https://github.com/Margarets00/homebridge-kef-speaker#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/USERNAME/homebridge-kef-lsx-ii.git"
+    "url": "https://github.com/Margarets00/homebridge-kef-speaker.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/homebridge-kef-lsx-ii/issues"
+    "url": "https://github.com/Margarets00/homebridge-kef-speaker/issues"
   },
   "keywords": [
     "homebridge-plugin",

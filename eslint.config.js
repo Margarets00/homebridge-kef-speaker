@@ -11,7 +11,7 @@ export default tseslint.config(
     rules: {
       'quotes': ['error', 'single'],
       'indent': ['warn', 2, { 'SwitchCase': 0 }],
-      'linebreak-style': ['error', 'windows'],
+      'linebreak-style': 0,
       'semi': ['error', 'always'],
       'comma-dangle': ['error', 'always-multiline'],
       'dot-notation': 'error',
@@ -34,3 +34,4 @@ export default tseslint.config(
     },
   },
 );
+
