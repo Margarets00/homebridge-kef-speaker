@@ -25,12 +25,31 @@ Add the following secrets:
 |-------------|-------------|-------|
 | `NPM_TOKEN` | NPM automation token | Your npm token from step 1 |
 
-### 3. Repository Permissions
+### 3. Repository Permissions ⚠️ **IMPORTANT**
 
 Ensure GitHub Actions has write permissions:
 - Go to Settings → Actions → General
-- Under "Workflow permissions", select "Read and write permissions"
-- Check "Allow GitHub Actions to create and approve pull requests"
+- Under "Workflow permissions", select **"Read and write permissions"**
+- Check **"Allow GitHub Actions to create and approve pull requests"**
+
+### 4. Alternative: Personal Access Token (If permission issues persist)
+
+If you encounter permission errors with the default GITHUB_TOKEN:
+
+1. **Create Personal Access Token**:
+   - Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - Generate new token with `repo` scope
+   
+2. **Add to Repository Secrets**:
+   - Repository → Settings → Secrets → Add `PERSONAL_TOKEN`
+   
+3. **Update workflow to use PAT**:
+   ```yaml
+   - name: Checkout code
+     uses: actions/checkout@v4
+     with:
+       token: ${{ secrets.PERSONAL_TOKEN }}
+   ```
 
 ## Release Workflow
 
@@ -57,6 +76,27 @@ Include keywords in commit messages to control version bumping:
 - `[major]`: Breaking changes (1.0.0 → 2.0.0)
 - `[minor]`: New features (1.0.0 → 1.1.0) 
 - Default: Patch release (1.0.0 → 1.0.1)
+
+## Troubleshooting
+
+### Permission Errors (403)
+- Verify "Read and write permissions" are enabled in Actions settings
+- Check if "Allow GitHub Actions to create and approve pull requests" is enabled
+- Consider using Personal Access Token if default GITHUB_TOKEN fails
+
+### NPM Publishing Issues
+- Verify `NPM_TOKEN` secret is set correctly
+- Check if package name is available on npm
+- Ensure `private: false` in package.json
+
+### GitHub Actions Issues
+- Check repository permissions
+- Verify all required secrets are set
+- Review action logs for specific errors
+
+### Version Conflicts
+- Ensure version in package.json is not already published
+- Use `npm version` commands to bump version properly
 
 ## First Time Setup
 
@@ -112,22 +152,6 @@ Include keywords in commit messages to control version bumping:
 4. **Create PR to develop**:
    - Create PR from `feature/your-feature-name` to `develop`
    - After review and merge, create PR from `develop` to `main`
-
-## Troubleshooting
-
-### NPM Publishing Issues
-- Verify `NPM_TOKEN` secret is set correctly
-- Check if package name is available on npm
-- Ensure `private: false` in package.json
-
-### GitHub Actions Issues
-- Check repository permissions
-- Verify all required secrets are set
-- Review action logs for specific errors
-
-### Version Conflicts
-- Ensure version in package.json is not already published
-- Use `npm version` commands to bump version properly
 
 ## Security Notes
 
